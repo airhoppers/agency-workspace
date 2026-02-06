@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LoadingComponent, ToastService } from '@workspace/shared-ui';
 import { AgencyService, AgencySettings, UpdateAgencySettingsRequest } from '@workspace/core';
@@ -51,10 +51,13 @@ interface SettingsTab {
               </svg>
             </div>
             <span>You have unsaved changes</span>
+            @if (hasValidationErrors()) {
+              <span class="validation-hint">— Fix validation errors before saving</span>
+            }
           </div>
           <div class="unsaved-actions">
             <button class="btn-discard" (click)="discardChanges()">Discard</button>
-            <button class="btn-save" (click)="saveAllChanges()" [disabled]="isSaving()">
+            <button class="btn-save" (click)="saveAllChanges()" [disabled]="isSaving() || hasValidationErrors()">
               @if (isSaving()) {
                 <span class="spinner"></span>
               }
@@ -244,8 +247,14 @@ interface SettingsTab {
       align-items: center;
       gap: var(--spacing-xs);
 
-      &:hover { opacity: 0.9; transform: translateY(-1px); }
-      &:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+      &:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+      &:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    }
+
+    .validation-hint {
+      color: var(--color-error, #ef4444);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
     }
 
     .spinner {
@@ -404,6 +413,15 @@ export class SettingsComponent implements OnInit {
   agencyId = signal('');
   activeTab = signal('booking-limits');
 
+  /** True when any open day has closing time <= opening time. */
+  hasValidationErrors = computed(() => {
+    const hours = this.settings()?.agencyBusinessHours?.hours;
+    if (!hours) return false;
+    return Object.values(hours).some(
+      (h: any) => h && !h.closed && h.close <= h.open
+    );
+  });
+
   tabs: SettingsTab[] = [
     {
       id: 'booking-limits',
@@ -504,6 +522,11 @@ export class SettingsComponent implements OnInit {
   }
 
   saveAllChanges(): void {
+    if (this.hasValidationErrors()) {
+      this.toast.error('Please fix validation errors before saving');
+      return;
+    }
+
     const current = this.settings();
     const agencyId = this.agencyId();
     if (!current || !agencyId) return;

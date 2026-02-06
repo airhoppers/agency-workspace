@@ -125,6 +125,7 @@ const AVAILABLE_HOURS: number[] = Array.from({ length: 24 }, (_, i) => i);
                       <div class="time-selectors">
                         <select
                           class="time-select"
+                          [class.time-select--error]="hasInvalidHours(day.key)"
                           [value]="getDayHours(day.key).open"
                           (change)="updateHour(day.key, 'open', $event)">
                           @for (hour of availableHours; track hour) {
@@ -138,6 +139,7 @@ const AVAILABLE_HOURS: number[] = Array.from({ length: 24 }, (_, i) => i);
 
                         <select
                           class="time-select"
+                          [class.time-select--error]="hasInvalidHours(day.key)"
                           [value]="getDayHours(day.key).close"
                           (change)="updateHour(day.key, 'close', $event)">
                           @for (hour of availableHours; track hour) {
@@ -147,6 +149,17 @@ const AVAILABLE_HOURS: number[] = Array.from({ length: 24 }, (_, i) => i);
                           }
                         </select>
                       </div>
+
+                      @if (hasInvalidHours(day.key)) {
+                        <div class="time-error">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                          </svg>
+                          <span>Closing time must be after opening time</span>
+                        </div>
+                      }
 
                       <button
                         type="button"
@@ -697,6 +710,25 @@ const AVAILABLE_HOURS: number[] = Array.from({ length: 24 }, (_, i) => i);
       }
     }
 
+    .time-select--error {
+      border-color: var(--color-error, #ef4444);
+      background-color: #fef2f2;
+
+      &:focus {
+        border-color: var(--color-error, #ef4444);
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+      }
+    }
+
+    .time-error {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      font-size: var(--font-size-xs);
+      color: var(--color-error, #ef4444);
+      margin-top: 2px;
+    }
+
     .time-separator {
       font-size: var(--font-size-sm);
       color: var(--text-tertiary);
@@ -1129,16 +1161,21 @@ export class BusinessHoursComponent implements OnInit {
     }
   });
 
+  private readonly settingsEffect = effect(() => {
+    const s = this.settings();
+    this.initializeHours(s);
+  });
+
   ngOnInit(): void {
-    this.initializeHours();
+    this.initializeHours(this.settings());
   }
 
   /**
    * Seeds the local hours signal from the input settings,
    * falling back to sensible defaults (weekdays 9-17, weekends closed).
    */
-  private initializeHours(): void {
-    const incoming = this.settings()?.agencyBusinessHours?.hours;
+  private initializeHours(s: AgencySettings | null): void {
+    const incoming = s?.agencyBusinessHours?.hours;
     const result: BusinessHours = {};
 
     for (const day of WEEK_DAYS) {
@@ -1156,6 +1193,13 @@ export class BusinessHoursComponent implements OnInit {
   /** Whether a given day is marked as closed. */
   isDayClosed(dayKey: string): boolean {
     return this.hours()[dayKey]?.closed ?? false;
+  }
+
+  /** Whether a day's closing time is not after its opening time. */
+  hasInvalidHours(dayKey: string): boolean {
+    const h = this.hours()[dayKey];
+    if (!h || h.closed) return false;
+    return h.close <= h.open;
   }
 
   /** Returns the DayHours for a given day, with safe defaults. */
