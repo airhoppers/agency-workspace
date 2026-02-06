@@ -34,6 +34,8 @@ export interface DayHours {
   closed: boolean;
 }
 
+export type MemberStatus = 'active' | 'invited' | 'suspended';
+
 export interface AgencyMember {
   id: string;
   email: string;
@@ -42,17 +44,27 @@ export interface AgencyMember {
   role: AgencyRole;
   profileImageUrl?: string;
   joinedAt?: string;
+  status?: MemberStatus;
+  position?: string;
 }
 
 export enum AgencyRole {
   OWNER = 'OWNER',
+  ADMIN = 'ADMIN',
   MANAGER = 'MANAGER',
+  STAFF = 'STAFF',
   AGENT = 'AGENT'
 }
 
 export interface AddMemberRequest {
   email: string;
   role: AgencyRole;
+}
+
+export interface InviteMemberRequest {
+  email: string;
+  role: AgencyRole;
+  message?: string;
 }
 
 // Full settings DTO matching backend AgencySettingsDto

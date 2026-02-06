@@ -8,6 +8,7 @@ import {
   AgencySettings,
   UpdateAgencySettingsRequest,
   AddMemberRequest,
+  InviteMemberRequest,
   CreateAgencyRequest,
   UpdateAgencyRequest,
   StartVerificationRequest,
@@ -120,6 +121,10 @@ export class AgencyService {
   }
 
   addAgencyMember(agencyId: string, data: AddMemberRequest): Observable<AgencyMember> {
+    return this.http.post<AgencyMember>(`${this.API_URL}/${agencyId}/members`, data);
+  }
+
+  inviteMember(agencyId: string, data: InviteMemberRequest): Observable<AgencyMember> {
     return this.http.post<AgencyMember>(`${this.API_URL}/${agencyId}/members`, data);
   }
 
